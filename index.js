@@ -73,9 +73,10 @@ async function run() {
 
     // <------------mongodb database and collections ------------->
     // create mongodb database and collection here 
+    const database = client.db("buildiqDB");
+    const apartmentsCollection = database.collection("apartments");
 
 
-    
     // <--------------jwt apis----------------->
     // generate jwt
     app.post('/jwt', async (req, res) => {
@@ -105,6 +106,11 @@ async function run() {
 
     // <-------------------apis---------------------->
 
+    // apartment apis
+    app.get('/apartments', async (req, res) => {
+      const result = await apartmentsCollection.find().toArray();
+      res.send(result);
+    })
 
 
 
