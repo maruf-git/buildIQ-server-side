@@ -185,20 +185,17 @@ async function run() {
       res.send(result);
     })
 
-    // assign role user/member based on apartment request status
+    // updated role user/member based on apartment request status
     app.patch('/update-role', verifyToken, async (req, res) => {
       const userDetails = req.body;
-      console.log('request :', userDetails);
-
       const query = { email: userDetails?.email };
       const updatedUser = {
         $set: {
           role: userDetails?.role
         }
       }
-
       const result = await usersCollection.updateOne(query, updatedUser);
-      console.log('updated result: ',result);
+     
       res.send(result);
     })
 
