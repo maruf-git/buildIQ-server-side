@@ -116,7 +116,7 @@ async function run() {
     // create and assign role to user
     app.post('/users', async (req, res) => {
       const user = req.body;
-      const email = user.email;
+      const email = user?.email;
       const result = await usersCollection.findOne({ email });
       if (result) {
         res.status(200).send(result);
@@ -171,10 +171,9 @@ async function run() {
       res.send(result);
     })
 
-    // update request status
+    // update apartment request status
     app.patch('/update-request', verifyToken, async (req, res) => {
       const requestDetails = req.body;
-      console.log("request details:", requestDetails)
       const query = { _id: new ObjectId(requestDetails.id) };
       const updatedRequest = {
         $set: {
@@ -182,7 +181,24 @@ async function run() {
         }
       }
       const result = await requestsCollection.updateOne(query, updatedRequest);
-      console.log('result:', result);
+
+      res.send(result);
+    })
+
+    // assign role user/member based on apartment request status
+    app.patch('/update-role', verifyToken, async (req, res) => {
+      const userDetails = req.body;
+      console.log('request :', userDetails);
+
+      const query = { email: userDetails?.email };
+      const updatedUser = {
+        $set: {
+          role: userDetails?.role
+        }
+      }
+
+      const result = await usersCollection.updateOne(query, updatedUser);
+      console.log('updated result: ',result);
       res.send(result);
     })
 
