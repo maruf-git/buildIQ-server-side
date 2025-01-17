@@ -171,6 +171,21 @@ async function run() {
       res.send(result);
     })
 
+    // update request status
+    app.patch('/update-request', verifyToken, async (req, res) => {
+      const requestDetails = req.body;
+      console.log("request details:", requestDetails)
+      const query = { _id: new ObjectId(requestDetails.id) };
+      const updatedRequest = {
+        $set: {
+          status: requestDetails.status
+        }
+      }
+      const result = await requestsCollection.updateOne(query, updatedRequest);
+      console.log('result:', result);
+      res.send(result);
+    })
+
 
 
 
