@@ -72,14 +72,17 @@ async function run() {
   try {
 
     // <------------mongodb database and collections ------------->
+
     // create mongodb database and collection here 
     const database = client.db("buildiqDB");
     const apartmentsCollection = database.collection("apartments");
     const usersCollection = database.collection("users");
     const requestsCollection = database.collection("requests");
 
+    // <-------------------apis start here---------------------->
 
-    // <--------------jwt apis----------------->
+
+    // <--------------jwt related apis----------------->
     // generate jwt
     app.post('/jwt', async (req, res) => {
       // taking user email to create token
@@ -106,8 +109,11 @@ async function run() {
 
 
 
-    // <-------------------apis---------------------->
-    // user apis
+
+
+    // <--------------user related apis---------------------->
+
+    // create and assign role to user
     app.post('/users', async (req, res) => {
       const user = req.body;
       const email = user.email;
@@ -125,13 +131,17 @@ async function run() {
 
     })
 
-    // apartment apis
+    //<-----------------------apartment related apis------------------------>
+
+    // get all apartments (open api)
     app.get('/apartments', async (req, res) => {
       const result = await apartmentsCollection.find().toArray();
       res.send(result);
     })
 
-    // request-apartment post api
+    // <----------------------general user apis------------------------------>
+
+    // request for apartment api
     app.post('/request-apartment', verifyToken, async (req, res) => {
       if (req.body.email !== req.user.email) {
         res.status(401).send({ message: 'Unauthorized access' });
@@ -139,8 +149,10 @@ async function run() {
       }
 
       const requestDetails = req.body;
+      // check if the user already requested for same apartment
       const query = { email: requestDetails.email, apartment_id: requestDetails.apartment_id }
       const findResult = await requestsCollection.findOne(query);
+
       if (findResult) {
         res.status(200).send({ message: "already requested" })
       } else {
@@ -150,6 +162,14 @@ async function run() {
 
     })
 
+
+    // <---------------------------admin apis-------------------------->
+
+    // get all request api
+    app.get('/requests', verifyToken, async (req, res) => {
+      const result = await requestsCollection.find().toArray();
+      res.send(result);
+    })
 
 
 
