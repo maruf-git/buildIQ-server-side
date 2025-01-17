@@ -75,6 +75,8 @@ async function run() {
     // create mongodb database and collection here 
     const database = client.db("buildiqDB");
     const apartmentsCollection = database.collection("apartments");
+    const usersCollection = database.collection("users");
+    const requestsCollection = database.collection("requests");
 
 
     // <--------------jwt apis----------------->
@@ -105,12 +107,49 @@ async function run() {
 
 
     // <-------------------apis---------------------->
+    // user apis
+    app.post('/users', async (req, res) => {
+      const user = req.body;
+      const email = user.email;
+      const result = await usersCollection.findOne({ email });
+      if (result) {
+        res.status(200).send(result);
+        return;
+      }
+
+      user.role = "user";
+      const newResult = await usersCollection.insertOne(user);
+      if (newResult.insertedId) {
+        res.status(200).send(user);
+      }
+
+    })
 
     // apartment apis
     app.get('/apartments', async (req, res) => {
       const result = await apartmentsCollection.find().toArray();
       res.send(result);
     })
+
+    // request-apartment post api
+    app.post('/request-apartment', verifyToken, async (req, res) => {
+      if (req.body.email !== req.user.email) {
+        res.status(401).send({ message: 'Unauthorized access' });
+        return;
+      }
+
+      const requestDetails = req.body;
+      const query = { email: requestDetails.email, apartment_id: requestDetails.apartment_id }
+      const findResult = await requestsCollection.findOne(query);
+      if (findResult) {
+        res.status(200).send({ message: "already requested" })
+      } else {
+        const result = await requestsCollection.insertOne(requestDetails);
+        res.send(result);
+      }
+
+    })
+
 
 
 
