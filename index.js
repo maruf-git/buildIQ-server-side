@@ -134,7 +134,7 @@ async function run() {
 
     // get all members (admin access only)
     app.get("/members", verifyToken, async (req, res) => {
-      const result = await usersCollection.find({role:'member'}).toArray();
+      const result = await usersCollection.find({ role: 'member' }).toArray();
       res.send(result);
     })
 
@@ -156,12 +156,15 @@ async function run() {
       }
 
       const requestDetails = req.body;
-      // check if the user already requested for same apartment
-      const query = { email: requestDetails.email, apartment_id: requestDetails.apartment_id }
-      const findResult = await requestsCollection.findOne(query);
+      // check if the user already requested for same apartment and status is pending
+      const query = { email: requestDetails.email, apartment_id: requestDetails.apartment_id, status:'pending' }
+      const findPendingResult = await requestsCollection.findOne(query);
 
-      if (findResult) {
-        res.status(200).send({ message: "already requested" })
+      // check if the user already the owner of the apartment
+      // const filter = {email: requestDetails.email, apartment_id: requestDetails.apartment_id, status:'pending'}
+      
+      if (findPendingResult) {
+        res.status(200).send({ message: "already requested" });
       } else {
         const result = await requestsCollection.insertOne(requestDetails);
         res.send(result);
@@ -174,7 +177,8 @@ async function run() {
 
     // get all request api
     app.get('/requests', verifyToken, async (req, res) => {
-      const result = await requestsCollection.find().toArray();
+      const query = { status: 'pending' };
+      const result = await requestsCollection.find(query).toArray();
       res.send(result);
     })
 
