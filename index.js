@@ -114,6 +114,7 @@ async function run() {
     // <--------------user related apis---------------------->
 
     // create and assign role to user
+    // add verifyToken
     app.post('/users', async (req, res) => {
       const user = req.body;
       const email = user?.email;
@@ -129,6 +130,12 @@ async function run() {
         res.status(200).send(user);
       }
 
+    })
+
+    // get all members (admin access only)
+    app.get("/members", verifyToken, async (req, res) => {
+      const result = await usersCollection.find({role:'member'}).toArray();
+      res.send(result);
     })
 
     //<-----------------------apartment related apis------------------------>
@@ -195,7 +202,7 @@ async function run() {
         }
       }
       const result = await usersCollection.updateOne(query, updatedUser);
-     
+
       res.send(result);
     })
 
