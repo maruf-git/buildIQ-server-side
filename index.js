@@ -80,6 +80,7 @@ async function run() {
     const apartmentsCollection = database.collection("apartments");
     const usersCollection = database.collection("users");
     const requestsCollection = database.collection("requests");
+    const acceptedRequestsCollection = database.collection("acceptedRequests");
     const paymentsCollection = database.collection("payments");
 
     // <-------------------apis start here---------------------->
@@ -209,31 +210,38 @@ async function run() {
 
     // <----------------------general user apis------------------------------>
 
-    // request for apartment api
+    // request for apartment post api
     app.post('/request-apartment', verifyToken, async (req, res) => {
       if (req.body.email !== req.user.email) {
         res.status(401).send({ message: 'Unauthorized access' });
         return;
       }
-
       const requestDetails = req.body;
-      // check if the user already requested for same apartment and status is pending
-      const query = { email: requestDetails.email, apartment_id: requestDetails.apartment_id, status: 'pending' }
-      const findPendingResult = await requestsCollection.findOne(query);
 
-      // check if the user already the owner of the apartment
-      // const filter = {email: requestDetails.email, apartment_id: requestDetails.apartment_id, status:'pending'}
-
-      if (findPendingResult) {
-        res.status(200).send({ message: "already requested" });
-      } else {
-        const result = await requestsCollection.insertOne(requestDetails);
-        res.send(result);
+      // check if already a member
+      const filter = { email:requestDetails.email,role:'member' };
+      const alreadyMember = await usersCollection.findOne(filter);
+      if (alreadyMember) {
+        res.status(200).send({ message: 'already user' });
+        return;
       }
+
+      // check if the user already requested for any apartment and status is pending
+      const find = { email: requestDetails.email, status: 'pending' };
+      const isAlreadyRequested = await requestsCollection.findOne(find);
+      if (isAlreadyRequested) {
+        res.status(200).send({ message: 'already requested' });
+        return;
+      }
+
+      const result = await requestsCollection.insertOne(requestDetails);
+      res.send(result);
+
 
     })
 
     // <--------------------------member apis--------------------->
+
     // get my accepted request(my apartment) api
     app.get('/my-apartment/:email', verifyToken, async (req, res) => {
       const email = req.params.email;
@@ -263,7 +271,6 @@ async function run() {
         }
       }
       const result = await requestsCollection.updateOne(query, updatedRequest);
-
       res.send(result);
     })
 
