@@ -115,8 +115,11 @@ async function run() {
     // <------------------Payment related APIS----------------------->
     // payment intent
     app.post('/create-payment-intent', async (req, res) => {
-      const { price } = req.body;
-      const amount = parseInt(price * 100);
+      const { rent,coupon,coupon_value } = req.body;
+
+      // validate coupon code her
+      
+      const amount = parseInt((rent-coupon_value) * 100);
 
       const paymentIntent = await stripe.paymentIntents.create({
         amount: amount,
@@ -131,6 +134,7 @@ async function run() {
     // payments api
     app.post('/payments', async (req, res) => {
       const payment = req.body;
+      payment.amount = payment.rent - payment.coupon_value;
       const paymentResult = await paymentsCollection.insertOne(payment);
 
       // todo: carefully delete each item from the cart
@@ -245,15 +249,15 @@ async function run() {
     // get my accepted request(my apartment) api
     app.get('/my-apartment/:email', verifyToken, async (req, res) => {
       const email = req.params.email;
-      const find = { email, status: 'accepted' };
-      const result = await requestsCollection.findOne(find);
+      const find = { email };
+      const result = await acceptedRequestsCollection.findOne(find);
 
       res.send(result);
     })
 
     // <---------------------------admin apis-------------------------->
 
-    // get all request api
+    // get all request api(only pending)
     app.get('/requests', verifyToken, async (req, res) => {
       const query = { status: 'pending' };
       const result = await requestsCollection.find(query).toArray();
