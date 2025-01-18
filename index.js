@@ -8,6 +8,8 @@ const cors = require('cors')
 const jwt = require('jsonwebtoken');
 // importing mongodb
 const { MongoClient, ServerApiVersion, ObjectId } = require('mongodb');
+// stripe
+const stripe = require("stripe")(`${process.env.PAYMENT_KEY}`);
 
 // application port
 const port = process.env.PORT || 5000
@@ -78,6 +80,7 @@ async function run() {
     const apartmentsCollection = database.collection("apartments");
     const usersCollection = database.collection("users");
     const requestsCollection = database.collection("requests");
+    const paymentsCollection = database.collection("payments");
 
     // <-------------------apis start here---------------------->
 
@@ -108,6 +111,51 @@ async function run() {
     })
 
 
+      // <------------------Payment related APIS----------------------->
+    // payment intent
+    app.post('/create-payment-intent', async (req, res) => {
+      const { price } = req.body;
+      const amount = parseInt(price * 100);
+
+      const paymentIntent = await stripe.paymentIntents.create({
+        amount: amount,
+        currency: 'usd',
+        payment_method_types: ['card']
+      })
+      res.send({
+        clientSecret: paymentIntent.client_secret
+      })
+    })
+
+    // payments api
+    app.post('/payments', async (req, res) => {
+      const payment = req.body;
+      const paymentResult = await paymentsCollection.insertOne(payment);
+
+      // todo: carefully delete each item from the cart
+      // const query = {
+      //   _id:{
+      //     $in: payment.cartIds.map(id=> new ObjectId(id))
+      //   }
+      // }
+      // const deleteResult = await cartCollection.deleteMany(query);
+      // res.send({paymentResult,deleteResult}); // response final
+      console.log('payment info', payment);
+
+
+      res.send({ paymentResult }); // remove after completing todo
+    })
+
+    // get payment history api
+    app.get('/payments/:email', verifyToken, async (req, res) => {
+      const query = { email: req.params.email };
+      if (req.params.email !== req.user.email) {
+        return res.status(403).send({ message: 'forbidden access' });
+      }
+      const result = await paymentsCollection.find(query).toArray();
+
+      res.send(result);
+    })
 
 
 
