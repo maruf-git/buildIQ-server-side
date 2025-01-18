@@ -219,7 +219,7 @@ async function run() {
       const requestDetails = req.body;
 
       // check if already a member
-      const filter = { email:requestDetails.email,role:'member' };
+      const filter = { email: requestDetails.email, role: 'member' };
       const alreadyMember = await usersCollection.findOne(filter);
       if (alreadyMember) {
         res.status(200).send({ message: 'already user' });
@@ -271,6 +271,13 @@ async function run() {
         }
       }
       const result = await requestsCollection.updateOne(query, updatedRequest);
+      res.send(result);
+    })
+
+    // if the request is accepted save the data to the acceptedRequestsCollection
+    app.post('/accepted-requests', verifyToken, async (req, res) => {
+      const request = req.body;
+      const result = await acceptedRequestsCollection.insertOne(request);
       res.send(result);
     })
 
