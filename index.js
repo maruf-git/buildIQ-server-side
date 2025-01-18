@@ -111,7 +111,7 @@ async function run() {
     })
 
 
-      // <------------------Payment related APIS----------------------->
+    // <------------------Payment related APIS----------------------->
     // payment intent
     app.post('/create-payment-intent', async (req, res) => {
       const { price } = req.body;
@@ -184,12 +184,12 @@ async function run() {
     app.get('/user/:email', async (req, res) => {
       // console.log(req);
       const email = req.params.email;
-      console.log('get single user role:', email)
+      // console.log('get single user role:', email)
 
       const find = { email };
 
       const result = await usersCollection.findOne(find);
-      console.log('find result:',result);
+      // console.log('find result:', result);
       res.send(result);
     })
 
@@ -233,6 +233,15 @@ async function run() {
 
     })
 
+    // <--------------------------member apis--------------------->
+    // get my accepted request(my apartment) api
+    app.get('/my-apartment/:email', verifyToken, async (req, res) => {
+      const email = req.params.email;
+      const find = { email, status: 'accepted' };
+      const result = await requestsCollection.findOne(find);
+
+      res.send(result);
+    })
 
     // <---------------------------admin apis-------------------------->
 
@@ -242,6 +251,7 @@ async function run() {
       const result = await requestsCollection.find(query).toArray();
       res.send(result);
     })
+
 
     // update apartment request status
     app.patch('/update-request', verifyToken, async (req, res) => {
