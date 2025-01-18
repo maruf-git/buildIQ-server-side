@@ -118,6 +118,7 @@ async function run() {
     app.post('/users', async (req, res) => {
       const user = req.body;
       const email = user?.email;
+
       const result = await usersCollection.findOne({ email });
       if (result) {
         res.status(200).send(result);
@@ -125,11 +126,23 @@ async function run() {
       }
 
       user.role = "user";
+      // console.log('user:', user);
       const newResult = await usersCollection.insertOne(user);
       if (newResult.insertedId) {
         res.status(200).send(user);
       }
+    })
+    // get single user role api
+    app.get('/user/:email', async (req, res) => {
+      // console.log(req);
+      const email = req.params.email;
+      console.log('get single user role:', email)
 
+      const find = { email };
+
+      const result = await usersCollection.findOne(find);
+      console.log('find result:',result);
+      res.send(result);
     })
 
     // get all members (admin access only)
@@ -157,12 +170,12 @@ async function run() {
 
       const requestDetails = req.body;
       // check if the user already requested for same apartment and status is pending
-      const query = { email: requestDetails.email, apartment_id: requestDetails.apartment_id, status:'pending' }
+      const query = { email: requestDetails.email, apartment_id: requestDetails.apartment_id, status: 'pending' }
       const findPendingResult = await requestsCollection.findOne(query);
 
       // check if the user already the owner of the apartment
       // const filter = {email: requestDetails.email, apartment_id: requestDetails.apartment_id, status:'pending'}
-      
+
       if (findPendingResult) {
         res.status(200).send({ message: "already requested" });
       } else {
