@@ -321,11 +321,30 @@ async function run() {
 
     // get all coupon
     app.get('/coupons', async (req, res) => {
-      console.log('coupon api hit');
-      const result = await couponsCollection.find().toArray();
+      const result = await couponsCollection.find().sort({ _id: -1 }).toArray();
       res.send(result);
     })
 
+    // change coupon validity status
+    app.patch('/coupons', verifyToken, async (req, res) => {
+      const { validity, id } = req.body;
+      const filter = { _id: new ObjectId(id) };
+      const updatedCoupon = {
+        $set: {
+          validity: validity
+        }
+      }
+      const result = await couponsCollection.updateOne(filter, updatedCoupon);
+      res.send(result);
+    })
+
+    // delete coupon
+    app.delete('/coupons/:id', verifyToken, async (req, res) => {
+      const id = req.params.id;
+      const filter = {_id: new ObjectId(id)};
+      const result = await couponsCollection.deleteOne(filter);
+      res.send(result);
+    })
 
 
 
