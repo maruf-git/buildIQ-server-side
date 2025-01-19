@@ -259,7 +259,6 @@ async function run() {
     app.get('/payments-history/:email', verifyToken, async (req, res) => {
       const email = req.params.email;
       const filter = { email };
-      console.log('history:',email);
       const result = await paymentsCollection.find(filter).sort({ _id: -1 }).toArray();
       res.send(result);
     })
@@ -304,9 +303,14 @@ async function run() {
         }
       }
       const result = await usersCollection.updateOne(query, updatedUser);
-
+      // if delete apartment is true then remove apartment from accepted requests collection
+      if (userDetails?.deleteApartment) {
+        const deleteApartmentAllocation = await acceptedRequestsCollection.deleteOne(query);
+      }
+      
       res.send(result);
     })
+
 
 
 
