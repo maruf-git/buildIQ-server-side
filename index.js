@@ -115,11 +115,11 @@ async function run() {
     // <------------------Payment related APIS----------------------->
     // payment intent
     app.post('/create-payment-intent', async (req, res) => {
-      const { rent,coupon,coupon_value } = req.body;
+      const { rent, coupon, coupon_value } = req.body;
 
       // validate coupon code her
-      
-      const amount = parseInt((rent-coupon_value) * 100);
+
+      const amount = parseInt((rent - coupon_value) * 100);
 
       const paymentIntent = await stripe.paymentIntents.create({
         amount: amount,
@@ -252,6 +252,15 @@ async function run() {
       const find = { email };
       const result = await acceptedRequestsCollection.findOne(find);
 
+      res.send(result);
+    })
+
+    // get payment history for specific email (sends most recent payments history)
+    app.get('/payments-history/:email', verifyToken, async (req, res) => {
+      const email = req.params.email;
+      const filter = { email };
+      console.log('history:',email);
+      const result = await paymentsCollection.find(filter).sort({ _id: -1 }).toArray();
       res.send(result);
     })
 
