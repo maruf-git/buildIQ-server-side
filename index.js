@@ -41,11 +41,13 @@ const verifyToken = (req, res, next) => {
   const tokenFromClient = req.cookies?.token;
   // no token found from client side check
   if (!tokenFromClient) {
+    console.log('no token')
     return res.status(401).send({ message: 'unauthorized access!' })
   };
   // check client token is valid or not
   jwt.verify(tokenFromClient, process.env.SECRET_KEY, (err, decoded) => {
     if (err) {
+      console.log('token error');
       return res.status(401).send({ message: 'unauthorized access!' });
     }
     req.user = decoded;
@@ -83,6 +85,7 @@ async function run() {
     const acceptedRequestsCollection = database.collection("acceptedRequests");
     const paymentsCollection = database.collection("payments");
     const couponsCollection = database.collection("coupons");
+    const announcementsCollection = database.collection('announcements');
 
     // <-------------------apis start here---------------------->
 
@@ -341,11 +344,30 @@ async function run() {
     // delete coupon
     app.delete('/coupons/:id', verifyToken, async (req, res) => {
       const id = req.params.id;
-      const filter = {_id: new ObjectId(id)};
+      const filter = { _id: new ObjectId(id) };
       const result = await couponsCollection.deleteOne(filter);
       res.send(result);
     })
 
+    // post announcement
+    app.post('/announcements', verifyToken, async (req, res) => {
+      const announcement = req.body;
+      const result = await announcementsCollection.insertOne(announcement);
+      res.send(result);
+    })
+    // get all recent announcements
+    app.get('/announcements', verifyToken, async (req, res) => {
+      console.log('announce api hit')
+      const result = await announcementsCollection.find().sort({ _id: -1 }).toArray();
+      res.send(result);
+    })
+    // delete specific announcement
+    app.delete('/announcements/:id', verifyToken, async (req, res) => {
+      const id = req.params.id;
+      const filter = {_id: new ObjectId(id)};
+      const result = await announcementsCollection.deleteOne(filter);
+      res.send(result);
+    })
 
 
 
