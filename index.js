@@ -82,6 +82,7 @@ async function run() {
     const requestsCollection = database.collection("requests");
     const acceptedRequestsCollection = database.collection("acceptedRequests");
     const paymentsCollection = database.collection("payments");
+    const couponsCollection = database.collection("coupons");
 
     // <-------------------apis start here---------------------->
 
@@ -307,7 +308,14 @@ async function run() {
       if (userDetails?.deleteApartment) {
         const deleteApartmentAllocation = await acceptedRequestsCollection.deleteOne(query);
       }
-      
+
+      res.send(result);
+    })
+
+    // add new coupon
+    app.post('/coupons', verifyToken, async (req, res) => {
+      const couponDetails = req.body;
+      const result = await couponsCollection.insertOne(couponDetails);
       res.send(result);
     })
 
