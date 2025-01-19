@@ -319,6 +319,12 @@ async function run() {
       res.send(result);
     })
 
+    // get all coupon
+    app.get('/coupons', async (req, res) => {
+      console.log('coupon api hit');
+      const result = await couponsCollection.find().toArray();
+      res.send(result);
+    })
 
 
 
