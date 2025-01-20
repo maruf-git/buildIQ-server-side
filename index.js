@@ -38,14 +38,15 @@ app.use(cookieParser());
 
 // authenticating verifyToken
 const verifyToken = (req, res, next) => {
-  const tokenFromClient = req.cookies?.token;
-  // no token found from client side check
-  if (!tokenFromClient) {
+
+  if (!req.headers.authorization) {
     console.log('no token')
     return res.status(401).send({ message: 'unauthorized access!' })
-  };
+  }
+  const token = req.headers.authorization.split(' ')[1];
+
   // check client token is valid or not
-  jwt.verify(tokenFromClient, process.env.SECRET_KEY, (err, decoded) => {
+  jwt.verify(token, process.env.SECRET_KEY, (err, decoded) => {
     if (err) {
       console.log('token error');
       return res.status(401).send({ message: 'unauthorized access!' });
@@ -55,8 +56,6 @@ const verifyToken = (req, res, next) => {
     next();
   })
 }
-
-
 
 //<----------------- mongodb --------------->
 // mongodb uri 
@@ -119,12 +118,6 @@ async function run() {
 
 
 
-
-
-
-
-
-
     // <-------------------apis start here---------------------->
 
 
@@ -135,22 +128,7 @@ async function run() {
       const email = req.body;
       // create token
       const token = jwt.sign(email, process.env.SECRET_KEY, { expiresIn: '5h' });
-      // setting the token to local cookie storage
-      res.cookie('token', token, {
-        httpOnly: true,
-        secure: process.env.NODE_ENV === 'production',
-        sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'strict',
-
-      }).send({ success: true });
-    })
-
-    // logout and clear saved token from browser cookie
-    app.get('/logout', async (req, res) => {
-      res.clearCookie('token', {
-        maxAge: 0,
-        secure: process.env.NODE_ENV === 'production',
-        sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'strict',
-      }).send({ success: true });
+      res.send({ token });
     })
 
 
@@ -162,7 +140,7 @@ async function run() {
       // find the coupon in the database
       const filter = { coupon, validity: 'Valid' };
       const result = await couponsCollection.findOne(filter);
-      let amount = rent;
+      let amount = rent*100;
       //if coupon is found calculating new pay amount by applying discount
       if (result) amount = parseInt((rent - (rent * result?.discount / 100)) * 100);
 
