@@ -210,46 +210,34 @@ async function run() {
 
 
 
-    // <--------------user related apis---------------------->
+    // <--------------user creation related apis---------------------->
 
-    // create and assign role to user
-    // add verifyToken
-    app.post('/users', async (req, res) => {
+    // create and assign role : user to a new user and save it to database
+    app.post('/users', verifyToken, async (req, res) => {
       const user = req.body;
       const email = user?.email;
-
+      //  saving user to the user collection db in a secure way
+      if (email != req?.user?.email) {
+        res.status(403).send('Forbidden Access!');
+        return;
+      }
+      // if user is already in db send the db data
       const result = await usersCollection.findOne({ email });
       if (result) {
         res.status(200).send(result);
         return;
       }
 
+      // assign the role and save the user in the db
       user.role = "user";
-      // console.log('user:', user);
       const newResult = await usersCollection.insertOne(user);
       if (newResult.insertedId) {
         res.status(200).send(user);
       }
     })
 
-    // get single user role api
-    app.get('/user/:email', async (req, res) => {
-      // console.log(req);
-      const email = req.params.email;
-      // console.log('get single user role:', email)
 
-      const find = { email };
 
-      const result = await usersCollection.findOne(find);
-      // console.log('find result:', result);
-      res.send(result);
-    })
-
-    // get all members (admin access only)
-    app.get("/members", verifyToken, async (req, res) => {
-      const result = await usersCollection.find({ role: 'member' }).toArray();
-      res.send(result);
-    })
 
     //<-----------------------public apis------------------------>
 
@@ -264,11 +252,35 @@ async function run() {
       const result = await couponsCollection.find().sort({ _id: -1 }).toArray();
       res.send(result);
     })
+
     // get/find one coupon
     app.get('/coupons/:code', async (req, res) => {
       const code = req.params.code;
       const filter = { coupon: code }
       const result = await couponsCollection.findOne(filter);
+      res.send(result);
+    })
+
+    // get all recent announcements
+    app.get('/announcements', verifyToken, async (req, res) => {
+      const result = await announcementsCollection.find().sort({ _id: -1 }).toArray();
+      res.send(result);
+    })
+
+    // get single user role api
+    app.get('/user/:email', async (req, res) => {
+      // console.log(req);
+      const email = req.params.email;
+
+      // only user can get his or her role 
+      // if (email != req?.user?.email) {
+      //   res.status(403).send({ message: 'Forbidden Access!' });
+      //   return;
+      // }
+
+      const find = { email };
+      const result = await usersCollection.findOne(find);
+      // console.log('find result:', result);
       res.send(result);
     })
 
@@ -313,7 +325,7 @@ async function run() {
     // <--------------------------member apis--------------------->
 
     // get my accepted request(my apartment) api
-    app.get('/my-apartment/:email', verifyToken,verifyMember, async (req, res) => {
+    app.get('/my-apartment/:email', verifyToken, verifyMember, async (req, res) => {
       const email = req.params.email;
       const find = { email };
       const result = await acceptedRequestsCollection.findOne(find);
@@ -322,7 +334,7 @@ async function run() {
     })
 
     // get payment history for specific email (sends most recent payments history)
-    app.get('/payments-history/:email', verifyToken,verifyMember, async (req, res) => {
+    app.get('/payments-history/:email', verifyToken, verifyMember, async (req, res) => {
       const email = req.params.email;
       const filter = { email };
       const result = await paymentsCollection.find(filter).sort({ _id: -1 }).toArray();
@@ -331,13 +343,19 @@ async function run() {
 
     // <---------------------------admin apis-------------------------->
 
+    // get all members (admin access only)
+    app.get("/members", verifyToken, verifyAdmin, async (req, res) => {
+      const result = await usersCollection.find({ role: 'member' }).toArray();
+      res.send(result);
+    })
+
+
     // get all request api(only pending)
     app.get('/requests', verifyToken, verifyAdmin, async (req, res) => {
       const query = { status: 'pending' };
       const result = await requestsCollection.find(query).toArray();
       res.send(result);
     })
-
 
     // update apartment request status
     app.patch('/update-request', verifyToken, verifyAdmin, async (req, res) => {
@@ -384,8 +402,6 @@ async function run() {
       res.send(result);
     })
 
-
-
     // change coupon validity status
     app.patch('/coupons', verifyToken, verifyAdmin, async (req, res) => {
       const { validity, id } = req.body;
@@ -413,11 +429,7 @@ async function run() {
       const result = await announcementsCollection.insertOne(announcement);
       res.send(result);
     })
-    // get all recent announcements
-    app.get('/announcements', verifyToken, async (req, res) => {
-      const result = await announcementsCollection.find().sort({ _id: -1 }).toArray();
-      res.send(result);
-    })
+
     // delete specific announcement
     app.delete('/announcements/:id', verifyToken, verifyAdmin, async (req, res) => {
       const id = req.params.id;
