@@ -236,11 +236,24 @@ async function run() {
       res.send(result);
     })
 
-    //<-----------------------apartment related apis------------------------>
+    //<-----------------------public apis------------------------>
 
     // get all apartments (open api)
     app.get('/apartments', async (req, res) => {
       const result = await apartmentsCollection.find().toArray();
+      res.send(result);
+    })
+
+    // get all coupon
+    app.get('/coupons', async (req, res) => {
+      const result = await couponsCollection.find().sort({ _id: -1 }).toArray();
+      res.send(result);
+    })
+    // get/find one coupon
+    app.get('/coupons/:code', async (req, res) => {
+      const code = req.params.code;
+      const filter = { coupon: code }
+      const result = await couponsCollection.findOne(filter);
       res.send(result);
     })
 
@@ -252,13 +265,23 @@ async function run() {
         res.status(401).send({ message: 'Unauthorized access' });
         return;
       }
-      const requestDetails = req.body;
 
+
+
+      const requestDetails = req.body;
       // check if already a member
       const filter = { email: requestDetails.email, role: 'member' };
       const alreadyMember = await usersCollection.findOne(filter);
       if (alreadyMember) {
         res.status(200).send({ message: 'already user' });
+        return;
+      }
+
+      // const adminFilter
+      const personFilter = { email: req?.user?.email };
+      const personDetails = await usersCollection.findOne(personFilter);
+      if (!personDetails || personDetails?.role !== 'user') {
+        res.status(403).send({ message: 'Forbidden Access' });
         return;
       }
 
@@ -272,8 +295,6 @@ async function run() {
 
       const result = await requestsCollection.insertOne(requestDetails);
       res.send(result);
-
-
     })
 
     // <--------------------------member apis--------------------->
@@ -319,14 +340,14 @@ async function run() {
     })
 
     // if the request is accepted save the data to the acceptedRequestsCollection
-    app.post('/accepted-requests', verifyToken,verifyAdmin, async (req, res) => {
+    app.post('/accepted-requests', verifyToken, verifyAdmin, async (req, res) => {
       const request = req.body;
       const result = await acceptedRequestsCollection.insertOne(request);
       res.send(result);
     })
 
     // updated role user/member based on apartment request status
-    app.patch('/update-role', verifyToken,verifyAdmin, async (req, res) => {
+    app.patch('/update-role', verifyToken, verifyAdmin, async (req, res) => {
       const userDetails = req.body;
       const query = { email: userDetails?.email };
       const updatedUser = {
@@ -344,27 +365,16 @@ async function run() {
     })
 
     // add new coupon
-    app.post('/coupons', verifyToken,verifyAdmin, async (req, res) => {
+    app.post('/coupons', verifyToken, verifyAdmin, async (req, res) => {
       const couponDetails = req.body;
       const result = await couponsCollection.insertOne(couponDetails);
       res.send(result);
     })
 
-    // get all coupon
-    app.get('/coupons', async (req, res) => {
-      const result = await couponsCollection.find().sort({ _id: -1 }).toArray();
-      res.send(result);
-    })
-    // get/find one coupon
-    app.get('/coupons/:code', async (req, res) => {
-      const code = req.params.code;
-      const filter = { coupon: code }
-      const result = await couponsCollection.findOne(filter);
-      res.send(result);
-    })
+
 
     // change coupon validity status
-    app.patch('/coupons', verifyToken, async (req, res) => {
+    app.patch('/coupons', verifyToken, verifyAdmin, async (req, res) => {
       const { validity, id } = req.body;
       const filter = { _id: new ObjectId(id) };
       const updatedCoupon = {
@@ -377,7 +387,7 @@ async function run() {
     })
 
     // delete coupon
-    app.delete('/coupons/:id', verifyToken, async (req, res) => {
+    app.delete('/coupons/:id', verifyToken, verifyAdmin, async (req, res) => {
       const id = req.params.id;
       const filter = { _id: new ObjectId(id) };
       const result = await couponsCollection.deleteOne(filter);
@@ -385,7 +395,7 @@ async function run() {
     })
 
     // post announcement
-    app.post('/announcements', verifyToken, async (req, res) => {
+    app.post('/announcements', verifyToken, verifyAdmin, async (req, res) => {
       const announcement = req.body;
       const result = await announcementsCollection.insertOne(announcement);
       res.send(result);
@@ -396,7 +406,7 @@ async function run() {
       res.send(result);
     })
     // delete specific announcement
-    app.delete('/announcements/:id', verifyToken, async (req, res) => {
+    app.delete('/announcements/:id', verifyToken, verifyAdmin, async (req, res) => {
       const id = req.params.id;
       const filter = { _id: new ObjectId(id) };
       const result = await announcementsCollection.deleteOne(filter);
