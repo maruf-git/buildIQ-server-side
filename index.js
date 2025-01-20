@@ -89,6 +89,7 @@ async function run() {
     const couponsCollection = database.collection("coupons");
     const announcementsCollection = database.collection('announcements');
 
+    // <---------------verification middleware--------------->
 
     // verify admin middleware
     const verifyAdmin = async (req, res, next) => {
@@ -97,6 +98,19 @@ async function run() {
       const result = await usersCollection.findOne(filter);
 
       if (!result || result?.role !== 'admin') {
+        return res.status(403).send({ message: 'forbidden access!' });
+      }
+
+      next();
+    }
+
+    // verify admin middleware
+    const verifyMember = async (req, res, next) => {
+      const email = req?.user?.email;
+      const filter = { email: email };
+      const result = await usersCollection.findOne(filter);
+
+      if (!result || result?.role !== 'member') {
         return res.status(403).send({ message: 'forbidden access!' });
       }
 
@@ -217,6 +231,7 @@ async function run() {
         res.status(200).send(user);
       }
     })
+
     // get single user role api
     app.get('/user/:email', async (req, res) => {
       // console.log(req);
@@ -266,8 +281,6 @@ async function run() {
         return;
       }
 
-
-
       const requestDetails = req.body;
       // check if already a member
       const filter = { email: requestDetails.email, role: 'member' };
@@ -300,7 +313,7 @@ async function run() {
     // <--------------------------member apis--------------------->
 
     // get my accepted request(my apartment) api
-    app.get('/my-apartment/:email', verifyToken, async (req, res) => {
+    app.get('/my-apartment/:email', verifyToken,verifyMember, async (req, res) => {
       const email = req.params.email;
       const find = { email };
       const result = await acceptedRequestsCollection.findOne(find);
@@ -309,7 +322,7 @@ async function run() {
     })
 
     // get payment history for specific email (sends most recent payments history)
-    app.get('/payments-history/:email', verifyToken, async (req, res) => {
+    app.get('/payments-history/:email', verifyToken,verifyMember, async (req, res) => {
       const email = req.params.email;
       const filter = { email };
       const result = await paymentsCollection.find(filter).sort({ _id: -1 }).toArray();
