@@ -56,6 +56,8 @@ const verifyToken = (req, res, next) => {
   })
 }
 
+
+
 //<----------------- mongodb --------------->
 // mongodb uri 
 
@@ -86,6 +88,28 @@ async function run() {
     const paymentsCollection = database.collection("payments");
     const couponsCollection = database.collection("coupons");
     const announcementsCollection = database.collection('announcements');
+
+
+    // verify admin middleware
+    const verifyAdmin = async (req, res, next) => {
+      const email = req?.user?.email;
+      const filter = { email: email };
+      const result = await usersCollection.findOne(filter);
+
+      if (!result || result?.role !== 'admin') {
+        return res.status(403).send({ message: 'forbidden access!' });
+      }
+
+      next();
+    }
+
+
+
+
+
+
+
+
 
     // <-------------------apis start here---------------------->
 
@@ -119,12 +143,16 @@ async function run() {
     // <------------------Payment related APIS----------------------->
     // payment intent
     app.post('/create-payment-intent', async (req, res) => {
-      const { rent, coupon, coupon_value } = req.body;
+      const { rent, coupon, discount } = req.body;
 
-      // validate coupon code her
+      // find the coupon in the database
+      const filter = { coupon, validity: 'Valid' };
+      const result = await couponsCollection.findOne(filter);
+      let amount = rent;
+      //if coupon is found calculating new pay amount by applying discount
+      if (result) amount = parseInt((rent - (rent * result?.discount / 100)) * 100);
 
-      const amount = parseInt((rent - coupon_value) * 100);
-
+      // create payment intent
       const paymentIntent = await stripe.paymentIntents.create({
         amount: amount,
         currency: 'usd',
@@ -138,7 +166,7 @@ async function run() {
     // payments api
     app.post('/payments', async (req, res) => {
       const payment = req.body;
-      payment.amount = payment.rent - payment.coupon_value;
+      payment.amount = payment.rent - payment.discount;
       const paymentResult = await paymentsCollection.insertOne(payment);
 
       // todo: carefully delete each item from the cart
@@ -149,7 +177,7 @@ async function run() {
       // }
       // const deleteResult = await cartCollection.deleteMany(query);
       // res.send({paymentResult,deleteResult}); // response final
-      console.log('payment info', payment);
+      // console.log('payment info', payment);
 
 
       res.send({ paymentResult }); // remove after completing todo
@@ -270,7 +298,7 @@ async function run() {
     // <---------------------------admin apis-------------------------->
 
     // get all request api(only pending)
-    app.get('/requests', verifyToken, async (req, res) => {
+    app.get('/requests', verifyToken, verifyAdmin, async (req, res) => {
       const query = { status: 'pending' };
       const result = await requestsCollection.find(query).toArray();
       res.send(result);
@@ -278,7 +306,7 @@ async function run() {
 
 
     // update apartment request status
-    app.patch('/update-request', verifyToken, async (req, res) => {
+    app.patch('/update-request', verifyToken, verifyAdmin, async (req, res) => {
       const requestDetails = req.body;
       const query = { _id: new ObjectId(requestDetails.id) };
       const updatedRequest = {
@@ -291,14 +319,14 @@ async function run() {
     })
 
     // if the request is accepted save the data to the acceptedRequestsCollection
-    app.post('/accepted-requests', verifyToken, async (req, res) => {
+    app.post('/accepted-requests', verifyToken,verifyAdmin, async (req, res) => {
       const request = req.body;
       const result = await acceptedRequestsCollection.insertOne(request);
       res.send(result);
     })
 
     // updated role user/member based on apartment request status
-    app.patch('/update-role', verifyToken, async (req, res) => {
+    app.patch('/update-role', verifyToken,verifyAdmin, async (req, res) => {
       const userDetails = req.body;
       const query = { email: userDetails?.email };
       const updatedUser = {
@@ -316,7 +344,7 @@ async function run() {
     })
 
     // add new coupon
-    app.post('/coupons', verifyToken, async (req, res) => {
+    app.post('/coupons', verifyToken,verifyAdmin, async (req, res) => {
       const couponDetails = req.body;
       const result = await couponsCollection.insertOne(couponDetails);
       res.send(result);
@@ -325,6 +353,13 @@ async function run() {
     // get all coupon
     app.get('/coupons', async (req, res) => {
       const result = await couponsCollection.find().sort({ _id: -1 }).toArray();
+      res.send(result);
+    })
+    // get/find one coupon
+    app.get('/coupons/:code', async (req, res) => {
+      const code = req.params.code;
+      const filter = { coupon: code }
+      const result = await couponsCollection.findOne(filter);
       res.send(result);
     })
 
@@ -357,14 +392,13 @@ async function run() {
     })
     // get all recent announcements
     app.get('/announcements', verifyToken, async (req, res) => {
-      console.log('announce api hit')
       const result = await announcementsCollection.find().sort({ _id: -1 }).toArray();
       res.send(result);
     })
     // delete specific announcement
     app.delete('/announcements/:id', verifyToken, async (req, res) => {
       const id = req.params.id;
-      const filter = {_id: new ObjectId(id)};
+      const filter = { _id: new ObjectId(id) };
       const result = await announcementsCollection.deleteOne(filter);
       res.send(result);
     })
