@@ -40,7 +40,7 @@ app.use(cookieParser());
 const verifyToken = (req, res, next) => {
 
   if (!req.headers.authorization) {
-    console.log('no token')
+    console.log('no token');
     return res.status(401).send({ message: 'unauthorized access!' })
   }
   const token = req.headers.authorization.split(' ')[1];
@@ -116,8 +116,6 @@ async function run() {
       next();
     }
 
-
-
     // <-------------------apis start here---------------------->
 
 
@@ -140,7 +138,7 @@ async function run() {
       // find the coupon in the database
       const filter = { coupon, validity: 'Valid' };
       const result = await couponsCollection.findOne(filter);
-      let amount = rent*100;
+      let amount = rent * 100;
       //if coupon is found calculating new pay amount by applying discount
       if (result) amount = parseInt((rent - (rent * result?.discount / 100)) * 100);
 
@@ -213,8 +211,6 @@ async function run() {
         res.status(200).send(user);
       }
     })
-
-
 
 
     //<-----------------------public apis------------------------>
@@ -327,7 +323,6 @@ async function run() {
       res.send(result);
     })
 
-
     // get all request api(only pending)
     app.get('/requests', verifyToken, verifyAdmin, async (req, res) => {
       const query = { status: 'pending' };
@@ -414,6 +409,34 @@ async function run() {
       const filter = { _id: new ObjectId(id) };
       const result = await announcementsCollection.deleteOne(filter);
       res.send(result);
+    })
+
+    // statistics api
+    app.get('/statistics',verifyToken, async (req, res) => {
+
+      const totalApartments = await apartmentsCollection.countDocuments();
+
+      // count available and unavailable apartments
+      const unavailable = await apartmentsCollection.countDocuments({ booking_status: 'Unavailable' });
+      const available = totalApartments - unavailable;
+
+      // calculate percentage
+      const availablePercentage = totalApartments > 0 ? (available / totalApartments) * 100 : 0;
+      const unavailablePercentage = totalApartments > 0 ? (unavailable / totalApartments) * 100 : 0;
+
+      // count users and members
+      const totalUsers = await usersCollection.countDocuments({ role: 'user' });
+      const totalMembers = await usersCollection.countDocuments({ role: 'member' });
+
+      const statistics = {
+        totalApartments,
+        availablePercentage,
+        unavailablePercentage,
+        totalUsers,
+        totalMembers
+      }
+      res.status(200).send(statistics);
+
     })
 
 
