@@ -259,7 +259,6 @@ async function run() {
     })
 
     // <----------------------general user apis------------------------------>
-
     // request for apartment post api
     app.post('/request-apartment', verifyToken, async (req, res) => {
       if (req.body.email !== req.user.email) {
@@ -292,9 +291,22 @@ async function run() {
         return;
       }
 
+      // check if the room is available or not
+      const apartment_id = requestDetails?.apartment_id;
+      const requestedApartment = await apartmentsCollection.findOne({ _id: new ObjectId(apartment_id) });
+      if (!requestedApartment) {
+        res.status(200).send({ message: 'no apartment' });
+        return;
+      }
+      if (requestedApartment.booking_status === 'unavailable') {
+        res.status(200).send({ message: 'unavailable' });
+        return;
+      }
+
       const result = await requestsCollection.insertOne(requestDetails);
       res.send(result);
     })
+
 
     // <--------------------------member apis--------------------->
 
@@ -340,6 +352,32 @@ async function run() {
         }
       }
       const result = await requestsCollection.updateOne(query, updatedRequest);
+
+      res.send(result);
+    })
+
+    // get apartment_availability status
+    app.get('/apartment-status/:id', verifyToken, verifyAdmin, async (req, res) => {
+      const id = req.params.id;
+      const filter = { _id: new ObjectId(id) };
+      const result = await apartmentsCollection.findOne(filter);
+      let isAvailable = true;
+      console.log('booking status:', result?.booking_status);
+      if (!result || result?.booking_status === 'unavailable') isAvailable = false;
+      res.send({ isAvailable });
+    })
+
+    // allocate apartment by making booking_status unavailable
+    app.patch('/allocate-apartment/:id', verifyToken, verifyAdmin, async (req, res) => {
+      const id = req.params.id;
+      const booking_status = req.body.booking_status;
+      const filter = { _id: new ObjectId(id) };
+      const update = {
+        $set: {
+          booking_status: booking_status
+        }
+      }
+      const result = await apartmentsCollection.updateOne(filter, update);
       res.send(result);
     })
 
@@ -354,16 +392,30 @@ async function run() {
     app.patch('/update-role', verifyToken, verifyAdmin, async (req, res) => {
       const userDetails = req.body;
       const query = { email: userDetails?.email };
+      // if delete apartment is true then remove apartment from accepted requests collection and make apartment booking status available
+      if (userDetails?.deleteApartment) {
+        // delete apartment from accepted request collection
+        const deleteApartmentAllocation = await acceptedRequestsCollection.deleteOne(query);
+
+        // update apartment booking_status to available
+        const user = await usersCollection.findOne(query);
+        const filter = { _id: new ObjectId(user?.apartment_id) };
+        const updateApartmentStatus = {
+          $set: {
+            booking_status: 'available'
+          }
+        }
+        const result = await apartmentsCollection.updateOne(filter, updateApartmentStatus);
+
+      }
+      // update the role
       const updatedUser = {
         $set: {
-          role: userDetails?.role
+          role: userDetails?.role,
+          apartment_id: userDetails?.apartment_id
         }
       }
       const result = await usersCollection.updateOne(query, updatedUser);
-      // if delete apartment is true then remove apartment from accepted requests collection
-      if (userDetails?.deleteApartment) {
-        const deleteApartmentAllocation = await acceptedRequestsCollection.deleteOne(query);
-      }
 
       res.send(result);
     })
@@ -412,12 +464,12 @@ async function run() {
     })
 
     // statistics api
-    app.get('/statistics',verifyToken, async (req, res) => {
+    app.get('/statistics', async (req, res) => {
 
       const totalApartments = await apartmentsCollection.countDocuments();
 
       // count available and unavailable apartments
-      const unavailable = await apartmentsCollection.countDocuments({ booking_status: 'Unavailable' });
+      const unavailable = await apartmentsCollection.countDocuments({ booking_status: 'unavailable' });
       const available = totalApartments - unavailable;
 
       // calculate percentage
