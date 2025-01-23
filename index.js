@@ -217,8 +217,36 @@ async function run() {
 
     // get all apartments (open api)
     app.get('/apartments', async (req, res) => {
-      const result = await apartmentsCollection.find().toArray();
-      res.send(result);
+      const { minimum, maximum, page, limit } = req.query;
+
+      // Convert query parameters to numbers
+      const minRent = parseInt(minimum, 10) || 0; // Default to 0 if not provided
+      const maxRent = parseInt(maximum, 10) || Number.MAX_SAFE_INTEGER; // Default to max value if not provided
+      const pageNumber=parseInt(page);
+      console.log(minRent, maxRent, pageNumber);
+
+      const pageSize =parseInt(limit) ; // Number of items per page
+      const skip = (pageNumber - 1) * pageSize; // Calculate the number of documents to skip
+
+
+      const result = await apartmentsCollection.find({ rent: { $gte: minRent, $lte: maxRent } })
+        .sort({ rent: 1 })
+        .skip(skip)
+        .limit(pageSize)
+        .toArray();
+
+      // Get the total count of matching documents
+      const totalDocuments = await apartmentsCollection.countDocuments({
+        rent: { $gte: minRent, $lte: maxRent },
+      });
+      console.log('total documents:',totalDocuments)
+      // Calculate total pages
+      const totalPages = Math.ceil(totalDocuments / pageSize);
+      console.log('total pages:',totalPages)
+      res.status(200).json({
+        result,
+        totalPages,
+      });
     })
 
     // get all coupon
@@ -464,7 +492,7 @@ async function run() {
     })
 
     // statistics api
-    app.get('/statistics', async (req, res) => {
+    app.get('/statistics', verifyToken, verifyAdmin, async (req, res) => {
 
       const totalApartments = await apartmentsCollection.countDocuments();
 
