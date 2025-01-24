@@ -25,6 +25,8 @@ const corsOptions = {
   origin: [
     'http://localhost:5173',
     'http://localhost:5174',
+    'https://build-iq.web.app',
+    'https://build-iq.firebaseapp.com'
   ],
   credentials: true,
   optionalSuccessStatus: 200,
@@ -218,12 +220,12 @@ async function run() {
     // get all apartments (open api)
     app.get('/apartments', async (req, res) => {
       const { minimum, maximum, page, limit } = req.query;
-
+      console.log("min , max, page, limit:",minimum,maximum,page,limit)
       // Convert query parameters to numbers
       const minRent = parseInt(minimum, 10) || 0; // Default to 0 if not provided
       const maxRent = parseInt(maximum, 10) || Number.MAX_SAFE_INTEGER; // Default to max value if not provided
       const pageNumber=parseInt(page);
-      console.log(minRent, maxRent, pageNumber);
+
 
       const pageSize =parseInt(limit) ; // Number of items per page
       const skip = (pageNumber - 1) * pageSize; // Calculate the number of documents to skip
@@ -339,7 +341,7 @@ async function run() {
     // <--------------------------member apis--------------------->
 
     // get my accepted request(my apartment) api
-    app.get('/my-apartment/:email', verifyToken, verifyMember, async (req, res) => {
+    app.get('/my-apartment/:email', verifyToken, async (req, res) => {
       const email = req.params.email;
       const find = { email };
       const result = await acceptedRequestsCollection.findOne(find);
