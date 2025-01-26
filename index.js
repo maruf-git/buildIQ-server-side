@@ -134,7 +134,7 @@ async function run() {
 
     // <------------------Payment related APIS----------------------->
     // payment intent
-    app.post('/create-payment-intent', async (req, res) => {
+    app.post('/create-payment-intent',verifyToken, async (req, res) => {
       const { rent, coupon, discount } = req.body;
 
       // find the coupon in the database
@@ -156,7 +156,7 @@ async function run() {
     })
 
     // payments api
-    app.post('/payments', async (req, res) => {
+    app.post('/payments',verifyToken, async (req, res) => {
       const payment = req.body;
       payment.amount = payment.rent - payment.discount;
       const paymentResult = await paymentsCollection.insertOne(payment);
