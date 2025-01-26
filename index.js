@@ -161,17 +161,6 @@ async function run() {
       payment.amount = payment.rent - payment.discount;
       const paymentResult = await paymentsCollection.insertOne(payment);
 
-      // todo: carefully delete each item from the cart
-      // const query = {
-      //   _id:{
-      //     $in: payment.cartIds.map(id=> new ObjectId(id))
-      //   }
-      // }
-      // const deleteResult = await cartCollection.deleteMany(query);
-      // res.send({paymentResult,deleteResult}); // response final
-      // console.log('payment info', payment);
-
-
       res.send({ paymentResult }); // remove after completing todo
     })
 
